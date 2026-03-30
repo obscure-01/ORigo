@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌍 Origo — Weather & Discover</title>
+  <meta name="description" content="Discover live weather, top tourist attractions, popular cafes, and city highlights worldwide." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+/* ── DESIGN TOKENS ─────────────────────────────── */
+:root {
+  --font:'Outfit',sans-serif;
+  --indigo:#6366f1; --indigo-d:#4338ca;
+  --sky:#38bdf8; --amber:#fbbf24; --emerald:#34d399;
+  --rose:#fb7185; --violet:#a78bfa; --orange:#fb923c;
+  --bg:#07101e;
+  --glass:rgba(255,255,255,0.07);
+  --glass-b:rgba(255,255,255,0.14);
+  --glass-brite:rgba(255,255,255,0.22);
+  --tx:  #eef2ff;
+  --tx-m:rgba(238,242,255,0.62);
+  --tx-l:rgba(238,242,255,0.36);
+  --blur:blur(22px);
+  --blur-s:blur(10px);
+  --sh-sm:0 2px 10px rgba(0,0,0,0.35);
+  --sh-md:0 8px 28px rgba(0,0,0,0.4);
+  --sh-lg:0 20px 64px rgba(0,0,0,0.55);
+  --r-s:8px; --r-m:16px; --r-l:24px; --r-xl:34px; --r-f:9999px;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --ease-o:cubic-bezier(0,0,.25,1);
+  /* weather accent — overridden per condition */
+  --wx1:#6366f1; --wx2:#8b5cf6;
+}
+body.wx-clear    {--wx1:#f59e0b;--wx2:#f97316;--wxbg:rgba(251,191,36,.08);}
+body.wx-rain     {--wx1:#38bdf8;--wx2:#1d4ed8;--wxbg:rgba(56,189,248,.07);}
+body.wx-drizzle  {--wx1:#7dd3fc;--wx2:#60a5fa;--wxbg:rgba(125,211,252,.06);}
+body.wx-clouds   {--wx1:#94a3b8;--wx2:#64748b;--wxbg:rgba(148,163,184,.05);}
+body.wx-snow     {--wx1:#bae6fd;--wx2:#7dd3fc;--wxbg:rgba(186,230,253,.06);}
+body.wx-thunder  {--wx1:#a78bfa;--wx2:#7c3aed;--wxbg:rgba(167,139,250,.09);}
+body.wx-mist     {--wx1:#cbd5e1;--wx2:#94a3b8;--wxbg:rgba(203,213,225,.05);}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--tx);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none;}
+button{cursor:pointer;font-family:var(--font);}
+img{display:block;max-width:100%;}
+
+/* ── CANVAS ────────────────────────────────────── */
+#fx-canvas{
+  position:fixed;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:0;opacity:0.5;
+}
+
+/* ── APP SHELL ──────────────────────────────────── */
+#app{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 20px 100px;}
+
+/* ── NAV ────────────────────────────────────────── */
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 0 18px;
+  position:sticky;top:0;z-index:60;
+  backdrop-filter:var(--blur-s);
+  background:rgba(7,16,30,0.72);
+  margin:0 -20px;padding-left:20px;padding-right:20px;
+  border-bottom:1px solid var(--glass-b);
+}
+.logo{
+  font-size:1.55rem;font-weight:900;letter-spacing:-.02em;
+  background:linear-gradient(130deg,#fff,rgba(255,255,255,0.6));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+#theme-btn{
+  background:var(--glass);border:1px solid var(--glass-b);
+  color:var(--tx);padding:8px 16px;border-radius:var(--r-s);
+  font-size:.875rem;font-weight:600;transition:background .15s;
+}
+#theme-btn:hover{background:rgba(255,255,255,.12);}
+
+/* ── HERO / SEARCH ───────────────────────────────── */
+#hero{text-align:center;padding:72px 0 52px;}
+
+.hero-h{
+  font-size:clamp(2.6rem,7vw,4.2rem);font-weight:900;letter-spacing:-.025em;line-height:1.08;
+  background:linear-gradient(135deg,#fff 10%,rgba(255,255,255,0.58) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:14px;
+}
+.hero-sub{font-size:1.05rem;color:var(--tx-m);margin-bottom:40px;font-weight:400;}
+
+.search-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;}
+.search-box{
+  display:flex;gap:0;
+  background:var(--glass);border:1.5px solid var(--glass-brite);
+  border-radius:var(--r-f);padding:6px 6px 6px 24px;
+  backdrop-filter:var(--blur);box-shadow:var(--sh-md),0 0 48px rgba(99,102,241,.18);
+  width:100%;max-width:540px;
+  transition:box-shadow .3s var(--ease);
+}
+.search-box:focus-within{box-shadow:var(--sh-md),0 0 0 2px var(--indigo),0 0 48px rgba(99,102,241,.3);}
+#city-input{
+  flex:1;background:transparent;border:none;outline:none;
+  color:var(--tx);font-family:var(--font);font-size:1rem;font-weight:500;
+}
+#city-input::placeholder{color:var(--tx-l);font-weight:400;}
+#search-btn{
+  background:linear-gradient(135deg,var(--indigo),var(--indigo-d));
+  color:#fff;border:none;border-radius:var(--r-f);
+  padding:10px 24px;font-size:.95rem;font-weight:700;
+  transition:opacity .15s,transform .15s;
+}
+#search-btn:hover{opacity:.88;transform:scale(1.02);}
+#search-btn:active{transform:scale(.97);}
+#loc-btn{
+  background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.28);
+  color:var(--emerald);padding:10px 22px;border-radius:var(--r-f);
+  font-size:.9rem;font-weight:700;transition:all .15s;
+}
+#loc-btn:hover:not(:disabled){background:rgba(52,211,153,.22);transform:translateY(-1px);}
+#loc-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* ── HISTORY CHIPS ──────────────────────────────── */
+#hist{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:18px;}
+.chip{
+  background:var(--glass);border:1px solid var(--glass-b);
+  color:var(--tx-m);padding:5px 16px;border-radius:var(--r-f);
+  font-size:.84rem;font-weight:600;backdrop-filter:var(--blur-s);
+  transition:all .15s;
+}
+.chip:hover{background:rgba(255,255,255,.12);color:var(--tx);transform:scale(1.06);}
+
+/* ── LOADING ────────────────────────────────────── */
+#loading{display:none;flex-direction:column;align-items:center;gap:18px;padding:64px 0;color:var(--tx-m);}
+#loading.on{display:flex;}
+.ring{
+  width:52px;height:52px;
+  border:3px solid rgba(99,102,241,.18);border-top-color:var(--indigo);
+  border-radius:50%;animation:spin .85s linear infinite;
+}
+.dots{display:flex;gap:8px;}
+.dots span{
+  width:8px;height:8px;background:var(--indigo);
+  border-radius:50%;animation:bop 1.3s ease-in-out infinite;
+}
+.dots span:nth-child(2){animation-delay:.2s;}
+.dots span:nth-child(3){animation-delay:.4s;}
+
+/* ── ERROR ──────────────────────────────────────── */
+#err-box{display:none;justify-content:center;padding:32px 0;}
+#err-box.on{display:flex;}
+.err-inner{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.28);
+  color:var(--rose);padding:14px 26px;border-radius:var(--r-m);font-weight:600;
+}
+
+/* ── RESULTS ────────────────────────────────────── */
+#results{display:none;flex-direction:column;gap:56px;}
+#results.on{display:flex;}
+
+/* ── SECTION HEADINGS ───────────────────────────── */
+.sec-eyebrow{
+  font-size:.76rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:.14em;color:var(--wx1);margin-bottom:6px;
+}
+.sec-title{
+  font-size:clamp(1.4rem,3vw,1.95rem);font-weight:800;
+  letter-spacing:-.01em;margin-bottom:26px;
+}
+
+/* ── WEATHER HERO CARD ──────────────────────────── */
+#wx-card{
+  background:var(--glass);border:1px solid var(--glass-brite);
+  border-radius:var(--r-xl);backdrop-filter:var(--blur);
+  box-shadow:var(--sh-lg);overflow:hidden;position:relative;
+  animation:fadeUp .5s var(--ease-o) both;
+}
+.wx-glow{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse at 25% 60%,var(--wxbg,rgba(99,102,241,.08)),transparent 65%);
+  pointer-events:none;
+}
+.wx-grid{
+  display:grid;grid-template-columns:120px 1fr auto;
+  gap:28px;align-items:center;padding:40px 44px;
+}
+.wx-icon img{width:110px;height:110px;object-fit:contain;filter:drop-shadow(0 8px 24px rgba(0,0,0,.45));}
+.wx-city{font-size:1rem;font-weight:600;color:var(--tx-m);margin-bottom:6px;}
+.wx-temp{
+  font-size:clamp(3.2rem,8vw,5rem);font-weight:900;
+  letter-spacing:-.04em;line-height:1;margin-bottom:4px;
+}
+.wx-desc{text-transform:capitalize;color:var(--tx-m);font-size:1.05rem;font-weight:500;}
+.wx-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:220px;}
+.stat{
+  background:rgba(255,255,255,.05);border-radius:var(--r-s);
+  padding:14px 16px;display:flex;flex-direction:column;gap:3px;
+}
+.stat-lbl{font-size:.72rem;color:var(--tx-l);font-weight:600;text-transform:uppercase;letter-spacing:.09em;}
+.stat-v{font-size:1.1rem;font-weight:800;}
+
+/* ── FORECAST STRIP ─────────────────────────────── */
+.fc-strip{display:flex;gap:12px;flex-wrap:wrap;}
+.fc-card{
+  flex:1;min-width:90px;
+  background:var(--glass);border:1px solid var(--glass-b);
+  border-radius:var(--r-m);padding:18px 14px;
+  text-align:center;backdrop-filter:var(--blur-s);
+  box-shadow:var(--sh-sm);
+  transition:transform .25s var(--ease),box-shadow .25s var(--ease);
+  animation:fadeUp .4s var(--ease-o) both;
+}
+.fc-card:hover{transform:translateY(-5px) scale(1.04);box-shadow:var(--sh-md);}
+.fc-day{font-size:.84rem;font-weight:700;color:var(--tx-m);margin-bottom:6px;}
+.fc-card img{width:48px;height:48px;margin:0 auto;}
+.fc-tmp{font-size:1.1rem;font-weight:800;margin-top:6px;}
+.fc-dsc{font-size:.75rem;color:var(--tx-l);text-transform:capitalize;margin-top:2px;}
+
+/* ── CITY SPOTLIGHT ─────────────────────────────── */
+#spotlight-card{
+  position:relative;border-radius:var(--r-xl);overflow:hidden;
+  min-height:340px;display:flex;align-items:flex-end;
+  box-shadow:var(--sh-lg);
+  background:#111;
+  animation:fadeUp .5s .1s var(--ease-o) both;
+}
+.spot-bg{
+  position:absolute;inset:0;object-fit:cover;width:100%;height:100%;
+  animation:kenBurns 20s ease-in-out infinite alternate;
+}
+.spot-no-img{
+  position:absolute;inset:0;
+  background:linear-gradient(135deg,var(--wx1),var(--wx2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:6rem;opacity:.35;
+}
+.spot-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(7,16,30,0.95) 0%,rgba(7,16,30,0.45) 55%,transparent 100%);
+}
+.spot-content{
+  position:relative;z-index:2;
+  padding:36px 40px;width:100%;
+}
+.spot-city-name{font-size:clamp(1.8rem,5vw,2.8rem);font-weight:900;letter-spacing:-.02em;margin-bottom:10px;}
+.spot-desc{
+  font-size:.95rem;color:rgba(255,255,255,.75);
+  line-height:1.65;max-width:640px;margin-bottom:18px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+.spot-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.spot-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 20px;border-radius:var(--r-f);border:none;
+  font-family:var(--font);font-size:.9rem;font-weight:700;
+  transition:all .2s var(--ease);
+}
+.spot-btn-yt{background:#ff0000;color:#fff;}
+.spot-btn-yt:hover{background:#cc0000;transform:translateY(-2px);}
+.spot-btn-wiki{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;}
+.spot-btn-wiki:hover{background:rgba(255,255,255,.22);transform:translateY(-2px);}
+
+/* ── PLACES / CAFES GRIDS ───────────────────────── */
+.places-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:18px;
+}
+
+.place-card{
+  background:var(--glass);border:1px solid var(--glass-b);
+  border-radius:var(--r-l);padding:24px;
+  backdrop-filter:var(--blur-s);box-shadow:var(--sh-sm);
+  display:flex;flex-direction:column;gap:12px;
+  transition:transform .25s var(--ease),box-shadow .25s var(--ease);
+  animation:fadeUp .4s var(--ease-o) both;
+  position:relative;overflow:hidden;
+}
+.place-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--card-c1,var(--wx1)),var(--card-c2,var(--wx2)));
+}
+.place-card:hover{transform:translateY(-4px);box-shadow:var(--sh-md);}
+
+.place-icon-row{display:flex;align-items:center;gap:14px;}
+.place-icon{
+  width:52px;height:52px;border-radius:var(--r-m);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;flex-shrink:0;
+  background:linear-gradient(135deg,var(--card-c1,var(--wx1)),var(--card-c2,var(--wx2)));
+}
+.place-name{font-size:1.02rem;font-weight:700;line-height:1.3;}
+.place-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:var(--r-f);font-size:.73rem;font-weight:700;
+  background:rgba(255,255,255,.08);color:var(--tx-m);border:1px solid var(--glass-b);
+  text-transform:capitalize;width:fit-content;
+}
+.place-info{display:flex;flex-direction:column;gap:5px;color:var(--tx-m);font-size:.85rem;}
+.place-info span{display:flex;align-items:center;gap:8px;}
+.place-footer{margin-top:auto;}
+.dir-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:9px 18px;border-radius:var(--r-f);border:1px solid var(--glass-brite);
+  background:rgba(255,255,255,.07);color:var(--tx);
+  font-family:var(--font);font-size:.85rem;font-weight:700;
+  transition:all .15s var(--ease);
+}
+.dir-btn:hover{background:rgba(255,255,255,.14);transform:translateY(-1px);}
+
+/* ── SKELETON LOADER ────────────────────────────── */
+.skeleton{
+  background:linear-gradient(90deg,
+    rgba(255,255,255,.04) 25%,
+    rgba(255,255,255,.1) 50%,
+    rgba(255,255,255,.04) 75%);
+  background-size:400% 100%;
+  animation:shimmer 1.6s ease-in-out infinite;
+  border-radius:var(--r-s);
+}
+
+/* ── EMPTY STATE ────────────────────────────────── */
+.empty-state{
+  text-align:center;padding:40px 0;color:var(--tx-l);
+  font-size:.95rem;font-weight:500;
+}
+
+/* ── KEYFRAMES ──────────────────────────────────── */
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes bop{0%,80%,100%{transform:scale(0.6);}40%{transform:scale(1);}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);}}
+@keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+@keyframes kenBurns{from{transform:scale(1.05);}to{transform:scale(1.18) translate(1%,-1%);}}
+@keyframes flash{0%,100%{opacity:0;}50%{opacity:1;}}
+
+/* ── RESPONSIVE ─────────────────────────────────── */
+@media(max-width:700px){
+  .wx-grid{grid-template-columns:1fr;gap:16px;padding:26px 24px;text-align:center;}
+  .wx-icon{display:flex;justify-content:center;}
+  .wx-stats{grid-template-columns:1fr 1fr;}
+  .spot-content{padding:24px 22px;}
+  .places-grid{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:480px){
+  #hero{padding:48px 0 36px;}
+  .search-box{padding:5px 5px 5px 18px;}
+  .places-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body class="wx-default">
+
+<canvas id="fx-canvas"></canvas>
+
+<div id="app">
+
+  <!-- NAV -->
+  <nav>
+    <span class="logo">🌍 Origo</span>
+    <button id="theme-btn">🌙 Dark</button>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero">
+    <h1 class="hero-h">Discover the World</h1>
+    <p class="hero-sub">Live weather · City highlights · Tourist spots · Local cafes</p>
+
+    <div class="search-wrap">
+      <div class="search-box">
+        <input id="city-input" type="text" placeholder="Search any city…" autocomplete="off" aria-label="City name" />
+        <button id="search-btn">Search 🔍</button>
+      </div>
+      <button id="loc-btn">📍 Use My Location</button>
+    </div>
+
+    <div id="hist" aria-label="Recent searches"></div>
+  </section>
+
+  <!-- LOADING -->
+  <div id="loading" role="status" aria-live="polite">
+    <div class="ring"></div>
+    <div class="dots"><span></span><span></span><span></span></div>
+    <p id="loading-txt" style="color:var(--tx-m);font-weight:500;">Fetching weather…</p>
+  </div>
+
+  <!-- ERROR -->
+  <div id="err-box" role="alert">
+    <div class="err-inner">⚠️ <span id="err-msg"></span></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <!-- CURRENT WEATHER -->
+    <section id="wx-section">
+      <p class="sec-eyebrow">Current Conditions</p>
+      <div id="wx-card">
+        <div class="wx-glow"></div>
+        <div class="wx-grid">
+          <div class="wx-icon" id="wx-icon"></div>
+          <div class="wx-main">
+            <p class="wx-city" id="wx-city"></p>
+            <p class="wx-temp" id="wx-temp"></p>
+            <p class="wx-desc" id="wx-desc"></p>
+          </div>
+          <div class="wx-stats" id="wx-stats"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FORECAST -->
+    <section id="fc-section">
+      <p class="sec-eyebrow">Upcoming</p>
+      <h2 class="sec-title">5-Day Forecast</h2>
+      <div class="fc-strip" id="fc-strip"></div>
+    </section>
+
+    <!-- CITY SPOTLIGHT -->
+    <section id="spot-section">
+      <p class="sec-eyebrow" id="spot-eyebrow">City Spotlight</p>
+      <h2 class="sec-title" id="spot-title">Explore the City</h2>
+      <div id="spotlight-card">
+        <div id="spot-no-img" class="spot-no-img">🏙️</div>
+        <img id="spot-bg" class="spot-bg" src="" alt="" style="display:none;" />
+        <div class="spot-overlay"></div>
+        <div class="spot-content">
+          <h3 class="spot-city-name" id="spot-name"></h3>
+          <p class="spot-desc" id="spot-desc">A beautiful destination waiting to be discovered.</p>
+          <div class="spot-actions">
+            <a class="spot-btn spot-btn-yt" id="spot-yt" href="#" target="_blank" rel="noopener">
+              ▶ Watch City Tour
+            </a>
+            <a class="spot-btn spot-btn-wiki" id="spot-wiki" href="#" target="_blank" rel="noopener">
+              📖 Wikipedia
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOURIST ATTRACTIONS -->
+    <section id="attr-section">
+      <p class="sec-eyebrow">Must-See</p>
+      <h2 class="sec-title">Top Tourist Attractions</h2>
+      <div class="places-grid" id="attr-grid">
+        <div class="skeleton" style="height:200px;border-radius:24px;"></div>
+        <div class="skeleton" style="height:200px;border-radius:24px;"></div>
+        <div class="skeleton" style="height:200px;border-radius:24px;"></div>
+      </div>
+    </section>
+
+    <!-- POPULAR CAFES -->
+    <section id="cafe-section">
+      <p class="sec-eyebrow">Sip & Stay</p>
+      <h2 class="sec-title">Popular Cafes</h2>
+      <div class="places-grid" id="cafe-grid">
+        <div class="skeleton" style="height:200px;border-radius:24px;"></div>
+        <div class="skeleton" style="height:200px;border-radius:24px;"></div>
+        <div class="skeleton" style="height:200px;border-radius:24px;"></div>
+      </div>
+    </section>
+
+  </div><!-- /results -->
+</div><!-- /app -->
+
+<script>
+'use strict';
+
+// ── CONFIG ────────────────────────────────────────
+const API_KEY = 'bc3a905338c5eba132f90531cb0bcb2c';
+const OWM     = 'https://api.openweathermap.org/data/2.5';
+const OVER    = 'https://overpass-api.de/api/interpreter';
+
+// ── STATE ─────────────────────────────────────────
+let searchHistory  = JSON.parse(localStorage.getItem('origo_hist') || '[]');
+let isDark         = true;
+let currentWeather = null;
+let canvasEngine   = null;
+
+// ── DOM ───────────────────────────────────────────
+const $= id => document.getElementById(id);
+const loading   = $('loading');
+const errBox    = $('err-box');
+const errMsg    = $('err-msg');
+const results   = $('results');
+const cityInput = $('city-input');
+const locBtn    = $('loc-btn');
+const histWrap  = $('hist');
+
+// ── CANVAS WEATHER FX ─────────────────────────────
+class WeatherFX {
+  constructor(cv) {
+    this.cv  = cv;
+    this.ctx = cv.getContext('2d');
+    this.pts = [];
+    this.cond= 'default';
+    this.raf = null;
+    this.flashAlpha = 0;
+    window.addEventListener('resize', () => this.resize());
+    this.resize();
+  }
+  resize(){
+    this.cv.width  = window.innerWidth;
+    this.cv.height = window.innerHeight;
+  }
+  setCondition(c){
+    this.cond = c;
+    this.pts  = [];
+    const n   = {Rain:160,Drizzle:90,Snow:70,Thunderstorm:200,Clear:25,default:35}[c]||35;
+    for(let i=0;i<n;i++) this.pts.push(this.mkPt());
+    if(this.raf) cancelAnimationFrame(this.raf);
+    this.loop();
+  }
+  mkPt(){
+    const w=this.cv.width, h=this.cv.height, c=this.cond;
+    if(c==='Rain'||c==='Drizzle'||c==='Thunderstorm') return {
+      x:Math.random()*w, y:Math.random()*h,
+      len:Math.random()*18+8, spd:Math.random()*9+6, op:Math.random()*.5+.25
+    };
+    if(c==='Snow') return {
+      x:Math.random()*w, y:Math.random()*h,
+      r:Math.random()*3.5+1, spd:Math.random()*1.3+.4,
+      sw:Math.random()*.5-.25, sw2:Math.random()*2, op:Math.random()*.6+.3
+    };
+    if(c==='Clear') return {
+      x:Math.random()*w, y:Math.random()*h,
+      r:Math.random()*2+.5, spd:Math.random()*.4+.1, op:Math.random()*.25+.1
+    };
+    return {
+      x:Math.random()*w, y:Math.random()*h,
+      r:Math.random()*2+.5, spd:Math.random()*.3+.15, dr:Math.random()*.3-.15, op:Math.random()*.2+.05
+    };
+  }
+  step(p){
+    const w=this.cv.width, h=this.cv.height, c=this.cond;
+    if(c==='Rain'||c==='Drizzle'||c==='Thunderstorm'){
+      p.y+=p.spd; p.x+=p.spd*.18;
+      if(p.y>h){p.y=-p.len;p.x=Math.random()*w;}
+    } else if(c==='Snow'){
+      p.y+=p.spd; p.sw2+=.02; p.x+=Math.sin(p.sw2)*p.sw;
+      if(p.x>w+20)p.x=-20; if(p.x<-20)p.x=w+20;
+      if(p.y>h){p.y=-p.r;p.x=Math.random()*w;}
+    } else if(c==='Clear'){
+      p.y-=p.spd;
+      if(p.y<-10){p.y=h+10;p.x=Math.random()*w;}
+    } else {
+      p.y-=p.spd; p.x+=p.dr||0;
+      if(p.y<-10){p.y=h+10;p.x=Math.random()*w;}
+    }
+  }
+  draw(p){
+    const ctx=this.ctx, c=this.cond;
+    ctx.save(); ctx.globalAlpha=p.op;
+    if(c==='Rain'||c==='Drizzle'){
+      ctx.strokeStyle='rgba(180,220,255,.85)';ctx.lineWidth=1.4;
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+p.spd*.18,p.y+p.len);ctx.stroke();
+    } else if(c==='Thunderstorm'){
+      ctx.strokeStyle='rgba(210,230,255,.95)';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+p.spd*.18,p.y+p.len);ctx.stroke();
+    } else if(c==='Snow'){
+      ctx.fillStyle='rgba(255,255,255,.95)';
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+    } else {
+      ctx.fillStyle='rgba(255,255,255,.5)';
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
+  loop(){
+    const ctx=this.ctx;
+    ctx.clearRect(0,0,this.cv.width,this.cv.height);
+    this.pts.forEach(p=>{ this.step(p); this.draw(p); });
+    // lightning flash
+    if(this.cond==='Thunderstorm'&&Math.random()<.004){
+      this.flashAlpha=.18;
+    }
+    if(this.flashAlpha>0){
+      ctx.save();ctx.globalAlpha=this.flashAlpha;
+      ctx.fillStyle='rgba(220,240,255,1)';
+      ctx.fillRect(0,0,this.cv.width,this.cv.height);
+      ctx.restore();
+      this.flashAlpha*=.75;
+    }
+    this.raf=requestAnimationFrame(()=>this.loop());
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────
+const WX_COND = {
+  Clear:'wx-clear', Rain:'wx-rain', Drizzle:'wx-drizzle',
+  Clouds:'wx-clouds', Snow:'wx-snow', Thunderstorm:'wx-thunder',
+  Mist:'wx-mist', Fog:'wx-mist', Haze:'wx-mist'
+};
+const WX_EMOJI = {
+  Clear:'☀️', Rain:'🌧️', Drizzle:'🌦️', Clouds:'☁️',
+  Snow:'❄️', Thunderstorm:'⛈️', Mist:'🌫️', Fog:'🌫️', Haze:'🌫️'
+};
+
+function applyWeatherTheme(main){
+  const cls = WX_COND[main] || 'wx-default';
+  document.body.className = cls;
+  canvasEngine.setCondition(main);
+}
+
+function showLoading(txt='Fetching…'){
+  loading.classList.add('on');
+  $('loading-txt').textContent=txt;
+  errBox.classList.remove('on');
+  results.classList.remove('on');
+}
+function hideLoading(){ loading.classList.remove('on'); }
+function showError(msg){
+  hideLoading();
+  errMsg.textContent=msg;
+  errBox.classList.add('on');
+}
+function showResults(){ results.classList.add('on'); }
+
+function saveHistory(city){
+  const c=city.trim();
+  searchHistory=[c,...searchHistory.filter(x=>x!==c)].slice(0,6);
+  localStorage.setItem('origo_hist',JSON.stringify(searchHistory));
+  renderHistory();
+}
+function renderHistory(){
+  histWrap.innerHTML='';
+  searchHistory.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='chip'; b.textContent=c;
+    b.addEventListener('click',()=>{ cityInput.value=c; doSearch(c); });
+    histWrap.appendChild(b);
+  });
+}
+
+// ── API LAYER ─────────────────────────────────────
+async function getWeatherByCity(city){
+  const r=await fetch(`${OWM}/weather?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`);
+  return r.json();
+}
+async function getWeatherByCoords(lat,lon){
+  const r=await fetch(`${OWM}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`);
+  return r.json();
+}
+async function getForecastByCity(city){
+  const r=await fetch(`${OWM}/forecast?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`);
+  return r.json();
+}
+async function getForecastByCoords(lat,lon){
+  const r=await fetch(`${OWM}/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`);
+  return r.json();
+}
+async function getWikipedia(city){
+  try{
+    const r=await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(city)}`,{headers:{'Accept':'application/json'}});
+    const d=await r.json();
+    if(d.type==='disambiguation'||!d.title) return null;
+    return {title:d.title,extract:d.extract||'',img:d.originalimage?.source||d.thumbnail?.source||null,url:d.content_urls?.desktop?.page||''};
+  }catch{return null;}
+}
+async function getAttractions(lat,lon){
+  const q=`[out:json][timeout:20];node["tourism"~"^(attraction|museum|viewpoint|artwork|gallery|zoo|theme_park|castle|monument|ruins)$"](around:12000,${lat},${lon});out 9;`;
+  try{
+    const r=await fetch(OVER,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+    const d=await r.json();
+    return (d.elements||[]).filter(e=>e.tags&&e.tags.name);
+  }catch{return [];}
+}
+async function getCafes(lat,lon){
+  const q=`[out:json][timeout:20];node["amenity"="cafe"]["name"](around:4000,${lat},${lon});out 9;`;
+  try{
+    const r=await fetch(OVER,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+    const d=await r.json();
+    return (d.elements||[]).filter(e=>e.tags&&e.tags.name);
+  }catch{return [];}
+}
+
+// ── RENDER WEATHER CARD ───────────────────────────
+function renderWeather(d){
+  const main=d.weather[0].main, icon=d.weather[0].icon;
+  $('wx-city').textContent=`${d.name}, ${d.sys.country}`;
+  $('wx-temp').textContent=`${Math.round(d.main.temp)}°C`;
+  $('wx-desc').textContent=d.weather[0].description;
+  $('wx-icon').innerHTML=`<img src="https://openweathermap.org/img/wn/${icon}@4x.png" alt="${main}" />`;
+  $('wx-stats').innerHTML=`
+    <div class="stat"><span class="stat-lbl">Feels Like</span><span class="stat-v">${Math.round(d.main.feels_like)}°C</span></div>
+    <div class="stat"><span class="stat-lbl">Humidity</span><span class="stat-v">${d.main.humidity}%</span></div>
+    <div class="stat"><span class="stat-lbl">Wind</span><span class="stat-v">${d.wind.speed} m/s</span></div>
+    <div class="stat"><span class="stat-lbl">Visibility</span><span class="stat-v">${d.visibility?Math.round(d.visibility/1000)+' km':'—'}</span></div>
+  `;
+}
+
+// ── RENDER FORECAST ───────────────────────────────
+function renderForecast(data){
+  const today=new Date().getDate(), seen=[], daily=[];
+  (data.list||[]).forEach(it=>{
+    const day=new Date(it.dt_txt).getDate();
+    if(day!==today&&!seen.includes(day)){ seen.push(day); daily.push(it); }
+  });
+  $('fc-strip').innerHTML=daily.slice(0,5).map((it,i)=>`
+    <div class="fc-card" style="animation-delay:${i*.07}s">
+      <p class="fc-day">${new Date(it.dt_txt).toLocaleDateString('en-US',{weekday:'short'})}</p>
+      <img src="https://openweathermap.org/img/wn/${it.weather[0].icon}@2x.png" alt="${it.weather[0].main}" />
+      <p class="fc-tmp">${Math.round(it.main.temp)}°C</p>
+      <p class="fc-dsc">${it.weather[0].description}</p>
+    </div>
+  `).join('');
+}
+
+// ── RENDER SPOTLIGHT ──────────────────────────────
+function renderSpotlight(city, wiki){
+  $('spot-eyebrow').textContent='City Spotlight';
+  $('spot-title').textContent=`Explore ${city}`;
+  $('spot-name').textContent=city;
+  const ytQ=encodeURIComponent(`${city} city tour 4K travel`);
+  $('spot-yt').href=`https://www.youtube.com/results?search_query=${ytQ}`;
+  if(wiki){
+    $('spot-desc').textContent=wiki.extract||`Discover the wonders of ${city}.`;
+    if(wiki.url) $('spot-wiki').href=wiki.url;
+    if(wiki.img){
+      const img=$('spot-bg');
+      img.src=wiki.img; img.alt=city;
+      img.style.display='block';
+      $('spot-no-img').style.display='none';
+    }
+  } else {
+    $('spot-desc').textContent=`Discover the unique culture, history, and beauty of ${city}.`;
+    $('spot-wiki').href=`https://en.wikipedia.org/wiki/${encodeURIComponent(city)}`;
+  }
+}
+
+// ── RENDER ATTRACTIONS ────────────────────────────
+const TOURISM_ICON={
+  attraction:['🏛️','#6366f1','#4338ca'],museum:['🏛️','#7c3aed','#5b21b6'],
+  viewpoint:['🔭','#0ea5e9','#0284c7'],artwork:['🎨','#ec4899','#be185d'],
+  gallery:['🖼️','#d946ef','#a21caf'],zoo:['🦁','#84cc16','#65a30d'],
+  theme_park:['🎡','#f59e0b','#d97706'],castle:['🏰','#78716c','#57534e'],
+  monument:['🗿','#94a3b8','#64748b'],ruins:['⛩️','#a16207','#854d0e'],
+  default:['📍','#6366f1','#4338ca']
+};
+function renderAttractions(items){
+  const el=$('attr-grid');
+  if(!items.length){ el.innerHTML='<p class="empty-state">No attractions found nearby — try a larger city!</p>'; return; }
+  el.innerHTML=items.map((it,i)=>{
+    const t=it.tags.tourism||'default';
+    const [ico,c1,c2]=TOURISM_ICON[t]||TOURISM_ICON.default;
+    const name=it.tags['name:en']||it.tags.name;
+    const hours=it.tags.opening_hours||'';
+    const mq=encodeURIComponent(name);
+    return `<div class="place-card" style="--card-c1:${c1};--card-c2:${c2};animation-delay:${i*.06}s">
+      <div class="place-icon-row">
+        <div class="place-icon">${ico}</div>
+        <span class="place-name">${name}</span>
+      </div>
+      <span class="place-badge">🏷 ${t.replace('_',' ')}</span>
+      ${hours?`<div class="place-info"><span>🕐 ${hours.slice(0,40)}</span></div>`:''}
+      <div class="place-footer">
+        <a class="dir-btn" href="https://www.google.com/maps/search/?api=1&query=${mq}" target="_blank" rel="noopener">📍 Get Directions</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER CAFES ──────────────────────────────────
+function renderCafes(items){
+  const el=$('cafe-grid');
+  if(!items.length){ el.innerHTML='<p class="empty-state">No cafes found nearby.</p>'; return; }
+  el.innerHTML=items.map((it,i)=>{
+    const t=it.tags;
+    const name=t['name:en']||t.name;
+    const cuisine=t.cuisine||'';
+    const hours=t.opening_hours||'';
+    const website=t.website||'';
+    const mq=encodeURIComponent(name);
+    return `<div class="place-card" style="--card-c1:#d97706;--card-c2:#b45309;animation-delay:${i*.06}s">
+      <div class="place-icon-row">
+        <div class="place-icon">☕</div>
+        <span class="place-name">${name}</span>
+      </div>
+      ${cuisine?`<span class="place-badge">🍽 ${cuisine.replace(/_|;/g,' ')}</span>`:'<span class="place-badge">☕ Cafe</span>'}
+      <div class="place-info">
+        ${hours?`<span>🕐 ${hours.slice(0,40)}</span>`:''}
+        ${website?`<span>🌐 <a href="${website}" target="_blank" rel="noopener" style="color:var(--amber);">${website.replace(/^https?:\/\//,'').slice(0,30)}</a></span>`:''}
+      </div>
+      <div class="place-footer">
+        <a class="dir-btn" href="https://www.google.com/maps/search/?api=1&query=${mq}" target="_blank" rel="noopener">📍 Get Directions</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── SKELETON RESET ────────────────────────────────
+function resetSkeletons(){
+  ['attr-grid','cafe-grid'].forEach(id=>{
+    $(id).innerHTML='<div class="skeleton" style="height:200px;border-radius:24px;"></div>'.repeat(3);
+  });
+}
+
+// ── CORE SEARCH ───────────────────────────────────
+async function doSearch(city){
+  showLoading(`Exploring ${city}…`);
+  resetSkeletons();
+  try{
+    const wxData=await getWeatherByCity(city);
+    if(wxData.cod!==200){ showError(`City not found: "${city}" ❌`); return; }
+    currentWeather=wxData;
+    const {lat,lon}=wxData.coord;
+
+    renderWeather(wxData);
+    applyWeatherTheme(wxData.weather[0].main);
+    saveHistory(wxData.name);
+
+    hideLoading();
+    showResults();
+
+    // Forecast (fast)
+    getForecastByCity(wxData.name).then(fd=>{ if(fd&&fd.list) renderForecast(fd); });
+
+    // Wikipedia spotlight
+    const cityLabel=wxData.name;
+    renderSpotlight(cityLabel,null); // show stub immediately
+    getWikipedia(cityLabel).then(wiki=>renderSpotlight(cityLabel,wiki));
+
+    // Overpass places (parallel)
+    getAttractions(lat,lon).then(items=>renderAttractions(items));
+    getCafes(lat,lon).then(items=>renderCafes(items));
+
+  }catch(e){
+    showError('Network error — please try again ❌');
+  }
+}
+
+async function doLocation(){
+  if(!navigator.geolocation){ showError('Geolocation not supported ❌'); return; }
+  showLoading('Finding your location…');
+  resetSkeletons();
+  navigator.geolocation.getCurrentPosition(
+    async({coords:{latitude:lat,longitude:lon}})=>{
+      try{
+        const wxData=await getWeatherByCoords(lat,lon);
+        if(wxData.cod!==200){ showError('Location weather not found ❌'); return; }
+        currentWeather=wxData;
+        cityInput.value=wxData.name;
+        renderWeather(wxData);
+        applyWeatherTheme(wxData.weather[0].main);
+        saveHistory(wxData.name);
+        hideLoading(); showResults();
+        getForecastByCoords(lat,lon).then(fd=>{ if(fd&&fd.list) renderForecast(fd); });
+        const label=wxData.name;
+        renderSpotlight(label,null);
+        getWikipedia(label).then(wiki=>renderSpotlight(label,wiki));
+        getAttractions(lat,lon).then(items=>renderAttractions(items));
+        getCafes(lat,lon).then(items=>renderCafes(items));
+      }catch{ showError('Error fetching location data ❌'); }
+    },
+    err=>{
+      hideLoading();
+      showError(err.code===1?'Location permission denied ❌ — enable in browser settings':'Unable to retrieve location ❌');
+    }
+  );
+}
+
+// ── EVENT LISTENERS ───────────────────────────────
+$('search-btn').addEventListener('click',()=>{ const v=cityInput.value.trim(); if(v) doSearch(v); });
+cityInput.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const v=cityInput.value.trim(); if(v) doSearch(v); }});
+locBtn.addEventListener('click',doLocation);
+
+$('theme-btn').addEventListener('click',()=>{
+  isDark=!isDark;
+  document.body.style.background=isDark?'':'#f8fafc';
+  document.body.style.color=isDark?'':'#0f172a';
+  $('theme-btn').textContent=isDark?'🌙 Dark':'☀️ Light';
+});
+
+// ── INIT ──────────────────────────────────────────
+canvasEngine=new WeatherFX($('fx-canvas'));
+canvasEngine.setCondition('default');
+renderHistory();
+
+// Auto-search on load if history has items
+if(searchHistory.length){ cityInput.value=searchHistory[0]; doSearch(searchHistory[0]); }
+</script>
+</body>
+</html>
