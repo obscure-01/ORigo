@@ -338,6 +338,19 @@ nav{
   font-size:.95rem;font-weight:500;
 }
 
+/* ── SCROLL TO TOP ──────────────────────────────── */
+#scroll-top{
+  position:fixed;bottom:28px;right:28px;z-index:99;
+  width:46px;height:46px;border-radius:50%;
+  background:var(--indigo);border:none;
+  color:#fff;font-size:1.2rem;font-weight:700;
+  box-shadow:var(--sh-md);
+  opacity:0;pointer-events:none;
+  transition:opacity .3s var(--ease), transform .3s var(--ease);
+}
+#scroll-top.show{opacity:1;pointer-events:auto;}
+#scroll-top:hover{transform:translateY(-3px);background:var(--indigo-d);}
+
 /* ── KEYFRAMES ──────────────────────────────────── */
 @keyframes spin{to{transform:rotate(360deg);}}
 @keyframes bop{0%,80%,100%{transform:scale(0.6);}40%{transform:scale(1);}}
@@ -474,6 +487,10 @@ nav{
     </section>
 
   </div><!-- /results -->
+
+  <!-- SCROLL TO TOP -->
+  <button id="scroll-top" title="Back to top" aria-label="Scroll to top">↑</button>
+
 </div><!-- /app -->
 
 <script>
@@ -891,6 +908,13 @@ renderHistory();
 
 // Auto-search on load if history has items
 if(searchHistory.length){ cityInput.value=searchHistory[0]; doSearch(searchHistory[0]); }
+
+// ── SCROLL TO TOP ─────────────────────────────────
+const scrollTopBtn = $('scroll-top');
+window.addEventListener('scroll', () => {
+  scrollTopBtn.classList.toggle('show', window.scrollY > 400);
+});
+scrollTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 </script>
 </body>
 </html>
