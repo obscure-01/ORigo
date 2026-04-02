@@ -83,12 +83,13 @@ nav{
   background:linear-gradient(130deg,#fff,rgba(255,255,255,0.6));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
 }
-#theme-btn{
+#theme-btn,#unit-btn{
   background:var(--glass);border:1px solid var(--glass-b);
   color:var(--tx);padding:8px 16px;border-radius:var(--r-s);
   font-size:.875rem;font-weight:600;transition:background .15s;
 }
-#theme-btn:hover{background:rgba(255,255,255,.12);}
+#theme-btn:hover,#unit-btn:hover{background:rgba(255,255,255,.12);}
+#unit-btn{font-weight:800;letter-spacing:.02em;}
 
 /* ── HERO / SEARCH ───────────────────────────────── */
 #hero{text-align:center;padding:72px 0 52px;}
@@ -383,7 +384,10 @@ nav{
   <!-- NAV -->
   <nav>
     <span class="logo">🌍 Origo</span>
-    <button id="theme-btn">🌙 Dark</button>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button id="unit-btn" title="Toggle temperature unit">°C / °F</button>
+      <button id="theme-btn">🌙 Dark</button>
+    </div>
   </nav>
 
   <!-- HERO -->
@@ -504,6 +508,7 @@ const OVER    = 'https://overpass-api.de/api/interpreter';
 // ── STATE ─────────────────────────────────────────
 let searchHistory  = JSON.parse(localStorage.getItem('origo_hist') || '[]');
 let isDark         = true;
+let isCelsius      = true;
 let currentWeather = null;
 let canvasEngine   = null;
 
@@ -899,6 +904,19 @@ $('theme-btn').addEventListener('click',()=>{
   document.body.style.background=isDark?'':'#f8fafc';
   document.body.style.color=isDark?'':'#0f172a';
   $('theme-btn').textContent=isDark?'🌙 Dark':'☀️ Light';
+});
+
+$('unit-btn').addEventListener('click',()=>{
+  isCelsius=!isCelsius;
+  $('unit-btn').textContent=isCelsius?'°C / °F':'°F / °C';
+  if(currentWeather){
+    const t=currentWeather.main.temp;
+    const fl=currentWeather.main.feels_like;
+    const toF=c=>Math.round(c*9/5+32);
+    $('wx-temp').textContent=isCelsius?`${Math.round(t)}°C`:`${toF(t)}°F`;
+    const felEl=document.querySelector('.stat-v');
+    if(felEl) felEl.textContent=isCelsius?`${Math.round(fl)}°C`:`${toF(fl)}°F`;
+  }
 });
 
 // ── INIT ──────────────────────────────────────────
